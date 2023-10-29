@@ -1,0 +1,319 @@
+---
+title: "Intro datascience project"
+output: html_document
+date: "2023-10-10"
+---
+
+```{r}
+# difficulty to find information over a significant period (example : survey/intentions data)
+# strategy : information reliable to all the need of a family and factor related to population trend
+# house/money/live_cost/   help/welfare?
+# education/work
+# sentiment : confiance/anxiety regardless to futur
+# to hard : family policies, not really quantifiable(true??)
+# other   : compare to other country.?????
+
+# difficulty to find growth rate who are not just linear (otherwise it can easily follow the same trend without real correlation)
+rm(list=ls())
+data = read.csv("Data/data_final.csv",dec=",")
+years = data[1]
+fertility_rate = data[2]
+```
+difficulty to find information over a significant period (example : survey/intentions data)
+strategy : information reliable to all the need of a family and factor related to population trend
+house/money/live_cost/   help/welfare?
+education/work
+sentiment : confiance/anxiety regardless to futur
+to hard : family policies, not really quantifiable(true??)
+other   : compare to other country.?????
+
+difficulty to find growth rate who are not just linear (otherwise it can easily follow the same trend without real correlation)
+```{r}
+plot(data[1:2])
+```
+
+```{r}
+colnames(data)
+```
+```{r}
+educations
+```
+
+
+```{r}
+# Metric really significant because the dataset is small (32 rows)
+to_drop = c()
+data.cor = cor(data)[,2]
+for (i in 1:length(data)){
+  if(abs(data.cor[i])<0.15){
+    to_drop = c(to_drop,i)
+  }
+}
+colnames(data)[to_drop]
+
+data2 = data[-c(to_drop)]
+```
+having basic educ do not matter "logic"
+Basic education for 20+ : not important because pretty much every body have done it
+Upper secondary education for fem20+/male30+ : same I suppose
+Bachelor's or equivalent level for 15-19 : impossible/exceptional
+Master's or equivalent level for 15-19 : impossible/exceptional
+Doctoral or equivalent level for 15-19 year : impossible/exceptional
+
+pop fem 25-39 not corr? => because fertility rate is already proportionate to pop size
+risk of poverty of 0-17 & 30-49 not a prob? => more correlated to 18-29 which can be an age with more unstable situation (just after education)
+shitty indicator : Consumer.confidence.indicator, Favourability.of.time.for.purchasing.durables
+
+```{r}
+educ.col = 47:129
+colnames(data2[,educ.col])
+data2.educ = data2[,educ.col]
+```
+
+
+```{r}
+library(factoextra)
+library(FactoMineR)
+data2.educ.scale = scale(data2.educ)
+res_pca = PCA(data2.educ.scale,graph = FALSE)
+round(res_pca$eig,2)
+```
+
+the first component explain a lot 
+we can try to keep as many as possible but to explain around 95% of the variance but it can be harder to the sharp decrease in variance of the components. (example : comp 4 explain only 3.8% of the total data variance)
+
+```{r}
+educations = c("Basic education", "3 Upper secondary education","4 Post-secondary non-tertiary education","5 Short-cycle tertiary education","6 Bachelor's or equivalent level","7 Master's or equivalent level","8 Doctoral or equivalent level")
+```
+
+```{r}
+# options(ggrepel.max.overlaps = Inf)
+# par( mar = c(4,10,4,1) )
+# plot(res_pca,choix="var",select="cos2 0.92",axes=c(1,2),cex=0.7)+
+#   scale_x_continuous(expand=c(0.5,0.5))
+```
+
+```{r}
+n = 60
+dim = 1
+
+cos2.dim = res_pca$var$cos2[,dim]
+var.dim <- names(sort(cos2.dim, decreasing = TRUE)[1:n])
+coord.dim = res_pca$var$coord[var.dim,dim]
+
+#####GRAPH######
+best_var = order(cos2.dim,decreasing = TRUE)[1:n]
+options(ggrepel.max.overlaps = Inf)
+par( mar = c(4,10,4,1) )
+plot(res_pca,choix="var",select=best_var,axes=c(1,2),cex=0.7)+
+  scale_x_continuous(expand=c(0.5,0.5))
+
+# dev.copy(png, "component1.png", width = 1200, height = 700, res = 200)
+# dev.off()
+```
+
+```{r}
+names(coord.dim[coord.dim>0])
+```
+positive dim1 :
+Post-secondary non-tertiary education : male-female 25+
+Bachelor's or equivalent level : male-female 20+
+Master's or equivalent level : male-female 25+
+Doctoral or equivalent level : male-female 30+
+
+```{r}
+names(coord.dim[coord.dim<0])
+```
+
+negative dim1 :
+Basic education : 35+
+Upper secondary education : male 15-19 | female 35-44 
+Short-cycle tertiary education : fem 15+ | male 20+ (maybe related to short ending of education)
+Bachelor's or equivalent level : male 20-24 (maybe military service)
+Doctoral or equivalent level : male 25-29
+
+Interpretation : 
+High education vs short education + (military service for young men)
+
+```{r}
+thresh = 0.3
+dim = 2
+
+cos2.dim = res_pca$var$cos2[,dim]
+var.dim <- names(sort(cos2.dim[cos2.dim>thresh], decreasing = TRUE))
+coord.dim = res_pca$var$coord[var.dim,dim]
+
+#####GRAPH######
+best_var = which(cos2.dim>thresh)
+options(ggrepel.max.overlaps = Inf)
+par( mar = c(4,10,4,1) )
+plot(res_pca,choix="var",select=best_var,axes=c(1,2),cex=0.7)+
+  scale_x_continuous(expand=c(0.5,0.5))
+
+dev.copy(png, "component2.png", width = 1200, height = 700, res = 200)
+dev.off()
+```
+```{r}
+coord.dim[coord.dim>0]
+```
+```{r}
+coord.dim[coord.dim<0]
+```
+
+high dim 2: 
+Basic educ : male 15-19
+Upper secondary education : all 45+
+Short-cycle tertiary education : female 40+ | male 45+
+Master's or equivalent level : female 20-24
+Doctoral or equivalent level : female 25-29 | male 30-34 
+
+
+low dim 2:
+Basic education : male 25-29 35+ | female 35+
+Upper secondary education : male 25-29
+Short-cycle tertiary education : all 15-19
+
+Interpretation ~17% variation:
+high education of youth (without big interruption) and short cycle education 40+ vs short cycle education of youth
+
+
+```{r}
+thresh = 0.2
+dim = 3
+
+cos2.dim = res_pca$var$cos2[,dim]
+var.dim <- names(sort(cos2.dim[cos2.dim>thresh], decreasing = TRUE))
+coord.dim = res_pca$var$coord[var.dim,dim]
+
+#####GRAPH######
+best_var = which(cos2.dim>thresh)
+options(ggrepel.max.overlaps = Inf)
+par( mar = c(4,10,4,1) )
+plot(res_pca,choix="var",select=best_var,axes=c(1,3),cex=0.7)+
+  scale_x_continuous(expand=c(0.5,0.5))
+
+# dev.copy(png, "component3.png", width = 1200, height = 700, res = 200)
+# dev.off()
+```
+```{r}
+coord.dim[coord.dim>0]
+```
+```{r}
+coord.dim[coord.dim<0]
+```
+
+High dim3 :
+Basic education : female 20-24 | male 25-29
+
+low dim 3:
+Bachelor's or equivalent level : male 45-49
+
+Interpretation (even if it explain only ~6 %) :
+Basic educ 20-30 vs male bachelor 45+ (not really usefull.. and variable are not even well represented on this axis)
+
+=> keep 2 component : 84% variation (not bad to compress 83 col)
+
+
+
+```{r}
+# New dataset with the 2 new component for all the education colones
+data3 = data2[-educ.col]
+data3["Educ.comp1"] = res_pca$ind$coord[,1]
+data3["Educ.comp2"] = res_pca$ind$coord[,2]
+data3.scale = scale(data3)
+data3.df = as.data.frame(data3.scale)
+# for (col in colnames(data3.df)){
+#   data3.df[,col] = round(data3.df[,col],3)
+# }
+```
+
+```{r}
+# detach(data3.df)
+# attach(data3.df)
+```
+
+
+```{r}
+library(MASS)
+full.model = lm(Total.fertility.rate ~ .-year, data = data3.df, na.action =  na.exclude)
+summary(full.model)
+#stepAIC(full.model, direction="both", trace=TRUE, k=2) # can't work because NA
+```
+Problem high dimension :
+NA in the linear regression because there is to much correlation between var
+Can be resolved by using PCA(dimensional reduction) but we don't want to loose all the data in 1 or 2 component, hard to interpret 
+
+
+```{r}
+library(glmnet)
+```
+```{r}
+size = dim(data3.scale)
+M = matrix(data=data3.scale, nrow = size[1], ncol=size[2])
+colnames(M) = colnames(data3.scale)
+```
+
+```{r}
+glmnet(x = M[,-c(1,2)], y = M[,2], alpha = 1, k=200)
+```
+
+```{r}
+set.seed(27)
+
+#perform k-fold cross-validation to find optimal lambda value
+cv_model <- cv.glmnet(x = M[,-c(1,2)], y = M[,2], alpha = 1)
+
+#find optimal lambda value that minimizes test MSE
+best_lambda <- cv_model$lambda.min
+best_lambda
+
+#produce plot of test MSE by lambda value
+plot(cv_model) 
+```
+
+```{r}
+best_model <- glmnet(x = M[,-c(1,2)], y = M[,2], alpha = 1, lambda = 0.0001)
+coef(best_model)
+```
+
+```{r}
+lasso.coef = coef(best_model)
+best_order = order(abs(lasso.coef), decreasing = TRUE)
+row.names(lasso.coef)[best_order[1:length(lasso.coef[abs(lasso.coef)>0.1])]]
+round(lasso.coef[best_order[1:length(lasso.coef[abs(lasso.coef)>0.1])]],2)
+```
+```{r}
+"Pop.tot"                           
+"Births.tot"                       
+"Consumer.price.indice"             
+"Pop.fem.15.19"                    
+"Births.mother.20.24"               
+"Births.mother.25.29"              
+"Births.mother.0.19"                
+"riskpoverty.rate.cashIncome.30.49"
+"Death.crude.oo"                    
+"Pop.mean"                         
+"D1.Financial.situation.now"        
+"Educ.comp2"                       
+"B1.Own.economy.now..balance."      
+"Deaths.infant.oo"                 
+"Pop.fem.20.24"                     
+"riskpoverty.rate.cashIncome.0.17" 
+"riskpoverty.rate.cashIncome.18.29"
+
+
+-0.58  0.38  0.24  0.23  0.18  0.17 -0.16  0.15 -0.15  0.14  0.14  0.13 -0.12 -0.12  0.12 -0.10  0.10
+```
+
+```{r}
+plot(abs(lasso.coef))
+```
+```{r}
+colnames(data)
+```
+
+# Graph with important feature
+
+
+# futur step for the project
+
